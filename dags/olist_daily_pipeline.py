@@ -10,6 +10,9 @@ def get_postgres_connection():
     hook = PostgresHook(postgres_conn_id="olist_postgres")
     return hook.get_conn()
 
+INGESTION_TIMEOUT_MINUTES = 5
+DBT_RUN_TIMEOUT_MINUTES = 10
+DBT_TEST_TIMEOUT_MINUTES = 10
 
 default_args = {
     "retries": 2,
@@ -61,6 +64,7 @@ with DAG(
     ingest_orders = PythonOperator(
         task_id="ingest_orders",
         python_callable=run_ingest_orders,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
 
@@ -80,6 +84,7 @@ with DAG(
     ingest_customers = PythonOperator(
         task_id="ingest_customers",
         python_callable=run_ingest_customers,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ############
@@ -99,6 +104,7 @@ with DAG(
     ingest_products = PythonOperator(
         task_id="ingest_products",
         python_callable=run_ingest_products,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ###########
@@ -118,6 +124,7 @@ with DAG(
     ingest_sellers = PythonOperator(
         task_id="ingest_sellers",
         python_callable=run_ingest_sellers,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ############
@@ -138,6 +145,7 @@ with DAG(
     ingest_order_items = PythonOperator(
         task_id="ingest_order_items",
         python_callable=run_ingest_order_items,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ##############
@@ -157,6 +165,7 @@ with DAG(
     ingest_payments = PythonOperator(
         task_id="ingest_payments",
         python_callable=run_ingest_payments,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ###########
@@ -176,6 +185,7 @@ with DAG(
     ingest_reviews = PythonOperator(
         task_id="ingest_reviews",
         python_callable=run_ingest_reviews,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ###############
@@ -195,6 +205,7 @@ with DAG(
     ingest_category_translation = PythonOperator(
         task_id="ingest_category_translation",
         python_callable=run_ingest_category_translation,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ######
@@ -214,6 +225,7 @@ with DAG(
     ingest_geolocation = PythonOperator(
         task_id="ingest_geolocation",
         python_callable=run_ingest_geolocation,
+        execution_timeout=timedelta(minutes=INGESTION_TIMEOUT_MINUTES),
     )
 
     ##############
@@ -222,6 +234,7 @@ with DAG(
         task_id="run_dbt",
         image="olist-dbt:1.0",
         command="dbt run --project-dir /opt/dbt",
+        execution_timeout=timedelta(minutes=DBT_RUN_TIMEOUT_MINUTES),
 
         mounts=[
             Mount(
@@ -248,6 +261,7 @@ with DAG(
         task_id="dbt_test",
         image="olist-dbt:1.0",
         command="dbt test --project-dir /opt/dbt",
+        execution_timeout=timedelta(minutes=DBT_TEST_TIMEOUT_MINUTES),
 
         mounts=[
             Mount(
