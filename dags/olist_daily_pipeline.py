@@ -237,4 +237,30 @@ with DAG(
         mount_tmp_dir=False,
     )
 
-    ingest_orders >> ingest_customers >> ingest_products >> ingest_sellers >> ingest_order_items >> ingest_payments >> ingest_reviews >> ingest_category_translation >> ingest_geolocation >> run_dbt
+    dbt_test = DockerOperator(
+        task_id="dbt_test",
+        image="olist-dbt:1.0",
+        command="dbt test --project-dir /opt/dbt",
+
+        mounts=[
+            Mount(
+                source="/home/laza/data-learning/02-data-engineering/olist_dbt",
+                target="/opt/dbt",
+                type="bind",
+                read_only=False,
+            ),
+            Mount(
+                source="/home/laza/data-learning/dbt-docker/profiles",
+                target="/root/.dbt",
+                type="bind",
+                read_only=True,
+            ),
+        ],
+
+        extra_hosts={"host.docker.internal": "host-gateway"},
+        docker_url="unix://var/run/docker.sock",
+        auto_remove="success",
+        mount_tmp_dir=False,
+    )
+
+    ingest_orders >> ingest_customers >> ingest_products >> ingest_sellers >> ingest_order_items >> ingest_payments >> ingest_reviews >> ingest_category_translation >> ingest_geolocation >> run_dbt >> dbt_test
