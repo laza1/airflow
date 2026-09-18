@@ -3,18 +3,25 @@ from airflow.providers.standard.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from datetime import datetime
+from datetime import datetime, timedelta
 from docker.types import Mount
 
 def get_postgres_connection():
     hook = PostgresHook(postgres_conn_id="olist_postgres")
     return hook.get_conn()
 
+
+default_args = {
+    "retries": 2,
+    "retry_delay": timedelta(minutes=1),
+}
+
 with DAG(
     dag_id="olist_daily_pipeline",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
+    default_args=default_args,
 ) as dag:
 
     test_connection = PythonOperator(
@@ -263,4 +270,14 @@ with DAG(
         mount_tmp_dir=False,
     )
 
-    ingest_orders >> ingest_customers >> ingest_products >> ingest_sellers >> ingest_order_items >> ingest_payments >> ingest_reviews >> ingest_category_translation >> ingest_geolocation >> run_dbt >> dbt_test
+    #ingest_orders >> ingest_customers >> ingest_products >> ingest_sellers >> ingest_order_items >> ingest_payments >> ingest_reviews >> ingest_category_translation >> ingest_geolocation >> run_dbt >> dbt_test
+    ingest_orders >> [
+        ingest_customers,
+        ingest_products,
+        ingest_sellers,
+        ingest_order_items,
+        ingest_payments,
+        ingest_reviews,
+        ingest_category_translation,
+        ingest_geolocation,
+    ] >> run_dbt >> dbt_test
