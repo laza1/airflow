@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from docker.types import Mount
 
 def get_postgres_connection():
@@ -21,8 +22,9 @@ default_args = {
 
 with DAG(
     dag_id="olist_daily_pipeline",
-    start_date=datetime(2026, 1, 1),
-    schedule="@daily",
+    start_date=datetime(2026, 1, 1, tzinfo=ZoneInfo("Indian/Antananarivo")),
+    #schedule="@daily",
+    schedule="0 22 * * *",
     catchup=False,
     default_args=default_args,
 ) as dag:
