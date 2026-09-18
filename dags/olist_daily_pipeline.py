@@ -22,7 +22,7 @@ default_args = {
 with DAG(
     dag_id="olist_daily_pipeline",
     start_date=datetime(2026, 1, 1),
-    schedule=None,
+    schedule="@daily",
     catchup=False,
     default_args=default_args,
 ) as dag:
