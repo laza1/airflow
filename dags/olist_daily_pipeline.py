@@ -286,6 +286,74 @@ with DAG(
         mount_tmp_dir=False,
     )
 
+    ################
+    from psycopg import sql
+
+
+    def record_pipeline_metrics():
+        tables = [
+            "fct_sales",
+            "fct_orders",
+            "fct_monthly_sales",
+            "dim_customer_analytics",
+            "dim_product_analytics",
+        ]
+
+        with get_postgres_connection() as conn:
+            with conn.cursor() as cursor:
+                for table_name in tables:
+                    query = sql.SQL("""
+                        INSERT INTO observability.pipeline_metrics (
+                            pipeline_name,
+                            table_name,
+                            row_count
+                        )
+                        SELECT
+                            %s,
+                            %s,
+                            COUNT(*)
+                        FROM analytics.{}
+                    """).format(sql.Identifier(table_name))
+
+                    cursor.execute(
+                        query,
+                        ("olist_daily_pipeline", table_name),
+                    )
+
+    record_metrics = PythonOperator(
+        task_id="record_pipeline_metrics",
+        python_callable=record_pipeline_metrics,
+    )
+
+    ###############
+    dbt_observability_test = DockerOperator(
+        task_id="dbt_observability_test",
+        image="olist-dbt:1.0",
+        command="dbt test --project-dir /opt/dbt --select pipeline_metrics_volume_anomaly",
+        execution_timeout=timedelta(minutes=DBT_TEST_TIMEOUT_MINUTES),
+
+        mounts=[
+            Mount(
+                source="/home/laza/data-learning/02-data-engineering/olist_dbt",
+                target="/opt/dbt",
+                type="bind",
+                read_only=False,
+            ),
+            Mount(
+                source="/home/laza/data-learning/dbt-docker/profiles",
+                target="/root/.dbt",
+                type="bind",
+                read_only=True,
+            ),
+        ],
+
+        extra_hosts={"host.docker.internal": "host-gateway"},
+        docker_url="unix://var/run/docker.sock",
+        auto_remove="success",
+        mount_tmp_dir=False,
+    )
+
+    
     #ingest_orders >> ingest_customers >> ingest_products >> ingest_sellers >> ingest_order_items >> ingest_payments >> ingest_reviews >> ingest_category_translation >> ingest_geolocation >> run_dbt >> dbt_test
     ingest_orders >> [
         ingest_customers,
@@ -296,4 +364,4 @@ with DAG(
         ingest_reviews,
         ingest_category_translation,
         ingest_geolocation,
-    ] >> run_dbt >> dbt_test
+    ] >> run_dbt >> dbt_test >> record_metrics >> dbt_observability_test
